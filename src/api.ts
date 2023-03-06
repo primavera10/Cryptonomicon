@@ -1,3 +1,4 @@
+
 const API_KEY =
   "4c8e128728db69b5bfd066999a31b40934ab3704b0a1f37f038eb43b9d673fc7";
 const AGGREGATE_INDEX = "5";
@@ -6,6 +7,7 @@ const tickersHandlers = new Map<string, Callback[]>();
 const socket = new WebSocket(
   `wss://streamer.cryptocompare.com/v2?api_key=${API_KEY}`
 );
+const bc = new BroadcastChannel("broadcast-info");
 
 socket.addEventListener("message", (e) => {
   const {
@@ -15,15 +17,15 @@ socket.addEventListener("message", (e) => {
     MESSAGE: message,
     PARAMETER: parameter,
   } = JSON.parse(e.data);
-  // if (message === "INVALID_SUB") {
-  //   const handlers = tickersHandlers.get(parameter.match(/([A-Z0-9]+)~USD/)[1]) ?? [];
-  //   handlers.forEach((handler) => handler());
-  //   return;
-  // }
-
+  if (message === "INVALID_SUB") {
+    const handlers = tickersHandlers.get(parameter.match(/([A-Z0-9]+)~USD/)[1]) ?? [];
+    handlers.forEach((handler) => handler());
+    return;
+  }
   if (type !== AGGREGATE_INDEX || newPrice === undefined) {
     return;
   }
+
   const handlers = tickersHandlers.get(currency) ?? []; // мы достали из мапы все валюты по этому названию
   // и потом их вызвали
   handlers.forEach((handler) => handler(newPrice));

@@ -121,12 +121,15 @@
           </div>
         </dl>
       </template>
-      <hr class="w-full border-t border-gray-600 my-4" />
+      <hr class="border-t border-gray-600 my-4" />
       <section v-if="selectedTicker" class="relative">
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
           {{ selectedTicker.name }} - USD
         </h3>
-        <div class="flex items-end border-gray-600 border-b border-l h-64">
+        <div
+          class="flex items-end border-gray-600 border-b border-l h-64 w-[70vw]"
+          ref="graphElement"
+        >
           <div
             v-for="(bar, idx) in normalizedGraph"
             :key="idx"
@@ -167,7 +170,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
 import { subscribeToTicker, unsubscribeFromTicker } from "./api";
 import type { Ref } from "vue"; // нужно чтобы сборщик понимал что это не жс, а именно ТС
 
@@ -188,6 +191,8 @@ const graph = ref<number[]>([]);
 const arrayNames = ref<String[]>([]);
 
 const page = ref<number>(1);
+const graphElement = ref<HTMLDivElement>();
+const maxGraphElements = ref<number>(1);
 
 const existedTicker = computed(
   () =>
@@ -209,7 +214,10 @@ function formatPrice(p: Ticker["price"]) {
 
 function add(tickerName?: string) {
   if (tickerName) {
-    const currentTicker: Ticker = { name: tickerName || ticker.value, price: "-" };
+    const currentTicker: Ticker = {
+      name: tickerName || ticker.value,
+      price: "-",
+    };
     tickers.value = [...tickers.value, currentTicker];
     ticker.value = "";
     filter.value = "";
@@ -247,17 +255,11 @@ onMounted(async () => {
   );
   const result = await response.json();
   arrayNames.value.push(...Object.keys(result.Data));
+  window.addEventListener("resize", calculateMaxGraphElements);
 });
 
-const autocomplete = computed(() => {
-  if (!ticker.value) {
-    return ["BTC", "DOGE", "ETH", "XDP"];
-  } else {
-    let a = arrayNames.value.filter((name) =>
-      name.toLowerCase().startsWith(ticker.value.toLowerCase())
-    );
-    return a.slice(0, 4);
-  }
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", calculateMaxGraphElements);
 });
 
 function addAutocompletedTicker(a: string) {
@@ -284,7 +286,6 @@ if (tickersData) {
   setInterval(updateTicker, 5000);
 }
 
-
 const windowData = Object.fromEntries(
   new URL(window.location).searchParams.entries()
 ); // записываем данные в адресную строку
@@ -296,6 +297,18 @@ if (windowData.page) {
 }
 //
 // computed starts here
+
+const autocomplete = computed(() => {
+  if (!ticker.value) {
+    return ["BTC", "DOGE", "ETH", "XDP"];
+  } else {
+    let a = arrayNames.value.filter((name) =>
+      name.toLowerCase().startsWith(ticker.value.toLowerCase())
+    );
+    return a.slice(0, 4);
+  }
+});
+
 const normalizedGraph = computed(() => {
   const maxValue = Math.max(...graph.value);
   const minValue = Math.min(...graph.value);
@@ -356,13 +369,22 @@ watch(tickers, (oldValue, newValue) => {
 
 function updateTicker(tickerName: string, price: number) {
   tickers.value
-    .filter((t => t.name === tickerName))
-    .forEach(t => {
+    .filter((t) => t.name === tickerName)
+    .forEach((t) => {
       if (t === selectedTicker.value) {
         graph.value.push(price);
+        while (graph.value.length > maxGraphElements.value) { // пока длина графика больше, чем макс кол-во элементов, убираем 1 элемент
+          graph.value.shift();
+        }
       }
       t.price = price;
     });
+}
+function calculateMaxGraphElements() {
+  if (!graphElement.value) {
+    return;
+  }
+  maxGraphElements.value = graphElement.value.clientWidth / 38;
 }
 </script>
 
