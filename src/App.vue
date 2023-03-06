@@ -170,7 +170,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
 import { subscribeToTicker, unsubscribeFromTicker } from "./api";
 import type { Ref } from "vue"; // нужно чтобы сборщик понимал что это не жс, а именно ТС
 
@@ -216,7 +216,7 @@ function add(tickerName?: string) {
   if (tickerName) {
     const currentTicker: Ticker = {
       name: tickerName || ticker.value,
-      price: "-",
+      price: "-"
     };
     tickers.value = [...tickers.value, currentTicker];
     ticker.value = "";
@@ -358,9 +358,12 @@ watch(paginatedTickers, () => {
   }
 });
 
-watch(selectedTicker, () => {
+watch( selectedTicker, async () => {
   // при изменении selectedTicker очисти значение graph
   graph.value = [];
+// ждем пока все изменения применятся и только тогда меняем кол-во элементов в графике при изменении рефа выбранного тикера
+  await nextTick();
+  calculateMaxGraphElements();
 });
 
 watch(tickers, (oldValue, newValue) => {
@@ -373,13 +376,15 @@ function updateTicker(tickerName: string, price: number) {
     .forEach((t) => {
       if (t === selectedTicker.value) {
         graph.value.push(price);
-        while (graph.value.length > maxGraphElements.value) { // пока длина графика больше, чем макс кол-во элементов, убираем 1 элемент
+        while (graph.value.length > maxGraphElements.value) {
+          // пока длина графика больше, чем макс кол-во элементов, убираем 1 элемент
           graph.value.shift();
         }
       }
       t.price = price;
     });
 }
+
 function calculateMaxGraphElements() {
   if (!graphElement.value) {
     return;
