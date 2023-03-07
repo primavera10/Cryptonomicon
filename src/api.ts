@@ -1,4 +1,3 @@
-
 const API_KEY =
   "4c8e128728db69b5bfd066999a31b40934ab3704b0a1f37f038eb43b9d673fc7";
 const AGGREGATE_INDEX = "5";
@@ -18,7 +17,8 @@ socket.addEventListener("message", (e) => {
     PARAMETER: parameter,
   } = JSON.parse(e.data);
   if (message === "INVALID_SUB") {
-    const handlers = tickersHandlers.get(parameter.match(/([A-Z0-9]+)~USD/)[1]) ?? [];
+    const handlers =
+      tickersHandlers.get(parameter.match(/([A-Z0-9]+)~USD/)[1]) ?? [];
     handlers.forEach((handler) => handler());
     return;
   }
@@ -32,7 +32,6 @@ socket.addEventListener("message", (e) => {
 });
 
 //TO DO - refactor to use URLSearchParams
-
 
 function sendToWebSocket(message: object) {
   const stringifiedMessage = JSON.stringify(message);
@@ -49,7 +48,7 @@ function sendToWebSocket(message: object) {
   );
 }
 
-function subscribeToTickerOnWsToBTC(t:string){
+function subscribeToTickerOnWsToBTC(t: string) {
   sendToWebSocket({
     action: "SubAdd",
     subs: [`5~CCCAGG~${t}~BTC`],
