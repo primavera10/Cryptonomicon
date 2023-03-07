@@ -1,61 +1,7 @@
 <template>
   <div class="container mx-auto flex flex-col items-center p-4">
     <div class="container">
-      <section>
-        <div class="flex">
-          <div class="max-w-xs">
-            <label for="wallet" class="block text-sm font-medium text-gray-700">
-              Тикер {{ ticker }}
-            </label>
-            <div class="mt-1 relative rounded-md shadow-md">
-              <input
-                type="text"
-                name="wallet"
-                id="wallet"
-                @keydown.enter="checkTicker"
-                v-model="ticker"
-                class="block w-full pr-10 border-gray-300 mb-1 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md"
-                placeholder="Например DOGE"
-              />
-            </div>
-            <div
-              class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
-            >
-              <span
-                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-                v-for="(a, idx) in autocomplete"
-                :key="idx"
-                @click="addAutocompletedTicker(a)"
-              >
-                {{ a }}
-              </span>
-            </div>
-            <div v-if="existedTicker" class="text-sm text-red-600">
-              Такой тикер уже добавлен
-            </div>
-          </div>
-        </div>
-        <button
-          type="button"
-          @click="checkTicker(ticker)"
-          class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-        >
-          <!-- Heroicon name: solid/mail -->
-          <svg
-            class="-ml-0.5 mr-2 h-6 w-6"
-            xmlns="http://www.w3.org/2000/svg"
-            width="30"
-            height="30"
-            viewBox="0 0 24 24"
-            fill="#ffffff"
-          >
-            <path
-              d="M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7zm-1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
-            ></path>
-          </svg>
-          Добавить
-        </button>
-      </section>
+      <AddTicker />
       <template v-if="tickers.length > 0">
         <hr class="w-full border-t border-gray-600 my-4" />
         <div class="my-2">
@@ -172,7 +118,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
 import { subscribeToTicker, unsubscribeFromTicker } from "./api";
-import type { Ref } from "vue"; // нужно чтобы сборщик понимал что это не жс, а именно ТС
+import AddTicker from "@/components/AddTicker.vue";
+import { useTickersStore } from "@/store/tickers";
+
+const store = useTickersStore();
 
 interface Ticker {
   name: string;
@@ -184,7 +133,7 @@ const ticker = ref("");
 const filter = ref<string>("");
 
 const selectedTicker = ref<any>(null);
-const tickers = ref<Ticker[]>([]);
+const tickers = computed(() => store.tickers);
 
 const graph = ref<number[]>([]);
 
@@ -214,35 +163,13 @@ function formatPrice(p: Ticker["price"]) {
 
 function add(tickerName?: string) {
   if (tickerName) {
-    const currentTicker: Ticker = {
-      name: tickerName || ticker.value,
-      price: "-"
-    };
-    tickers.value = [...tickers.value, currentTicker];
-    ticker.value = "";
-    filter.value = "";
-    subscribeToTicker(currentTicker.name, (newPrice?: number) => {
-      if (!newPrice) {
-        currentTicker.invalid = true;
-      } else {
-        updateTicker(currentTicker.name, newPrice);
-      }
-    });
+    store.add(tickerName);
   }
 }
 
-function checkTicker() {
-  if (!existedTicker.value) {
-    add();
-  }
-}
 
 function handleDelete(tickerToRemove: Ticker) {
-  tickers.value = tickers.value.filter((t) => t !== tickerToRemove);
-  if (selectedTicker.value === tickerToRemove) {
-    selectedTicker.value = null;
-  }
-  unsubscribeFromTicker(tickerToRemove.name);
+  store.remove(tickerToRemove.name);
 }
 
 function select(ticker: any) {
@@ -250,11 +177,7 @@ function select(ticker: any) {
 }
 
 onMounted(async () => {
-  const response = await fetch(
-    `https://min-api.cryptocompare.com/data/all/coinlist?summary=true`
-  );
-  const result = await response.json();
-  arrayNames.value.push(...Object.keys(result.Data));
+  await store.loadAvailableTickers();
   window.addEventListener("resize", calculateMaxGraphElements);
 });
 
@@ -272,6 +195,8 @@ const tickersData = localStorage.getItem("cryptonomicon-list");
 
 // так как следующие строки внутри сетап функции, они работают как хук жизненного цикла created
 
+
+/*
 if (tickersData) {
   tickers.value = JSON.parse(tickersData);
   tickers.value.forEach((ticker) => {
@@ -285,6 +210,8 @@ if (tickersData) {
   });
   setInterval(updateTicker, 5000);
 }
+
+*/
 
 const windowData = Object.fromEntries(
   new URL(window.location).searchParams.entries()
@@ -358,10 +285,10 @@ watch(paginatedTickers, () => {
   }
 });
 
-watch( selectedTicker, async () => {
+watch(selectedTicker, async () => {
   // при изменении selectedTicker очисти значение graph
   graph.value = [];
-// ждем пока все изменения применятся и только тогда меняем кол-во элементов в графике при изменении рефа выбранного тикера
+  // ждем пока все изменения применятся и только тогда меняем кол-во элементов в графике при изменении рефа выбранного тикера
   await nextTick();
   calculateMaxGraphElements();
 });
