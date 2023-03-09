@@ -285,13 +285,21 @@ watch(paginatedTickers, () => {
   }
 });
 
+watch(selectedTicker, () => {
+  graph.value = [];
+});
+
 watch(selectedTicker, async () => {
   // при изменении selectedTicker очисти значение graph
-  graph.value = [];
+  graph.value.push(selectedTicker.value.price);
+  while (graph.value.length > maxGraphElements.value) {
+    // пока длина графика больше, чем макс кол-во элементов, убираем 1 элемент
+    graph.value.shift();
+  }
   // ждем пока все изменения применятся и только тогда меняем кол-во элементов в графике при изменении рефа выбранного тикера
   await nextTick();
   calculateMaxGraphElements();
-});
+}, { deep: true });
 
 watch(tickers, (oldValue, newValue) => {
   localStorage.setItem("cryptonomicon-list", JSON.stringify(tickers.value));
@@ -318,6 +326,7 @@ function calculateMaxGraphElements() {
   }
   maxGraphElements.value = graphElement.value.clientWidth / 38;
 }
+
 </script>
 
 <style src="./app.css"></style>
