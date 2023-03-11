@@ -31,7 +31,10 @@
         </div>
       </div>
     </div>
-    <add-button @click="add" />
+    <add-button
+      :disabled="disabled"
+      @click="add"
+    />
   </section>
 </template>
 
@@ -39,20 +42,22 @@
 import AddButton from "@/components/AddButton.vue";
 import { computed, ref } from "vue";
 import { subscribeToTicker } from "@/api";
-import type { PropType } from 'vue';
+
 import { useTickersStore } from "@/store/tickers";
 
 const store = useTickersStore();
-const tickers = (()=> store.tickers);
-const props = defineProps({
-  existingTickers: {
-    type: Array as PropType<string[]>,
-    default: () => [], // для дефолтных объектов нужно объявлять их через функцию
-  },
 
+const props = defineProps({
+  disabled :{
+    type: Boolean,
+    required: false,
+    default: false,
+  },
 });
 
-const ticker = ref('');
+
+
+const ticker = ref("");
 const existedTicker = computed(() => store.tickerExists(ticker.value));
 function add() {
   if (!existedTicker.value) {

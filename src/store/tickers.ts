@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { subscribeToTicker, unsubscribeFromTicker } from "@/api";
-interface Ticker {
+
+ export interface Ticker {
   name: string;
   price: string | number;
   invalid?: boolean;
@@ -23,7 +24,11 @@ export const useTickersStore = defineStore("tickers", {
       this.tickers = this.tickers.filter((t) => t.name !== name);
       unsubscribeFromTicker(name);
     },
-    update(name: string, price: Ticker["price"]) {
+    update(name: string, price?: Ticker["price"]) {
+      if (price === undefined) {
+        this.tickers.find((t) => t.name === name)!.invalid = true;
+        return;
+      }
       this.tickers.find((t) => t.name === name)!.price = price;
     },
     add(name: string) {
@@ -32,21 +37,30 @@ export const useTickersStore = defineStore("tickers", {
         price: "-",
         invalid: false,
       };
-
+      if (currentTicker.name.length === 0){
+        return;
+      }
       this.tickers.push(currentTicker);
 
       subscribeToTicker(currentTicker.name, (newPrice?: number) => {
-        if (!newPrice) {
-          currentTicker.invalid = true;
-        } else {
           this.update(name, newPrice);
-        }
       });
     },
     tickerExists(name: string): boolean {
       return !!this.tickers.find(
         (ticker) => ticker.name.toLowerCase() === name.toLowerCase()
       );
+    },
+    getFromLocalStorage(data: string | null) {
+      if (!data) {
+        return;
+      }
+      this.tickers = JSON.parse(data);
+      this.tickers.forEach((ticker) => {
+        subscribeToTicker(ticker.name, (newPrice?: number) => {
+          this.update(ticker.name, newPrice);
+        });
+      });
     },
   },
   getters: {

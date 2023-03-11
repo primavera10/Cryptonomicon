@@ -1,7 +1,7 @@
 <template>
   <div class="container mx-auto flex flex-col items-center p-4">
     <div class="container">
-      <AddTicker />
+      <AddTicker :disabled="tooManyTickersAdded" />
       <template v-if="tickers.length > 0">
         <hr class="w-full border-t border-gray-600 my-4" />
         <div class="my-2">
@@ -32,8 +32,9 @@
             :class="{
               'border-4': selectedTicker === t,
               'bg-red-100': t.invalid,
+              'bg-white': !t.invalid,
             }"
-            class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
+            class="overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
             @click="select(t)"
           >
             <div class="px-4 py-5 sm:p-6 text-center">
@@ -68,66 +69,32 @@
         </dl>
       </template>
       <hr class="border-t border-gray-600 my-4" />
-      <section v-if="selectedTicker" class="relative">
-        <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-          {{ selectedTicker.name }} - USD
-        </h3>
-        <div
-          class="flex items-end border-gray-600 border-b border-l h-64 w-[70vw]"
-          ref="graphElement"
-        >
-          <div
-            v-for="(bar, idx) in normalizedGraph"
-            :key="idx"
-            :style="{ height: `${bar}%` }"
-            class="bg-purple-800 border w-10"
-          ></div>
-        </div>
-        <button
-          @click="selectedTicker = null"
-          type="button"
-          class="absolute top-0 right-0"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            xmlns:xlink="http://www.w3.org/1999/xlink"
-            xmlns:svgjs="http://svgjs.com/svgjs"
-            version="1.1"
-            width="30"
-            height="30"
-            x="0"
-            y="0"
-            viewBox="0 0 511.76 511.76"
-            style="enable-background: new 0 0 512 512"
-            xml:space="preserve"
-          >
-            <g>
-              <path
-                d="M436.896,74.869c-99.84-99.819-262.208-99.819-362.048,0c-99.797,99.819-99.797,262.229,0,362.048    c49.92,49.899,115.477,74.837,181.035,74.837s131.093-24.939,181.013-74.837C536.715,337.099,536.715,174.688,436.896,74.869z     M361.461,331.317c8.341,8.341,8.341,21.824,0,30.165c-4.16,4.16-9.621,6.251-15.083,6.251c-5.461,0-10.923-2.091-15.083-6.251    l-75.413-75.435l-75.392,75.413c-4.181,4.16-9.643,6.251-15.083,6.251c-5.461,0-10.923-2.091-15.083-6.251    c-8.341-8.341-8.341-21.845,0-30.165l75.392-75.413l-75.413-75.413c-8.341-8.341-8.341-21.845,0-30.165    c8.32-8.341,21.824-8.341,30.165,0l75.413,75.413l75.413-75.413c8.341-8.341,21.824-8.341,30.165,0    c8.341,8.32,8.341,21.824,0,30.165l-75.413,75.413L361.461,331.317z"
-                fill="#718096"
-                data-original="#000000"
-              ></path>
-            </g>
-          </svg>
-        </button>
-      </section>
+      <PriceGraph
+        v-if="selectedTicker"
+        :selected-ticker="selectedTicker"
+        :graph="graph"
+        @close="selectedTicker = null"
+        @updateGraph="graph.shift()"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
-import { subscribeToTicker, unsubscribeFromTicker } from "./api";
+import {
+  ref,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  watch,
+  nextTick,
+} from "vue";
 import AddTicker from "@/components/AddTicker.vue";
 import { useTickersStore } from "@/store/tickers";
+import type { Ticker } from "@/store/tickers";
+import PriceGraph from "@/components/PriceGraph.vue";
 
 const store = useTickersStore();
-
-interface Ticker {
-  name: string;
-  price: string | number;
-  invalid?: boolean;
-}
 
 const ticker = ref("");
 const filter = ref<string>("");
@@ -135,13 +102,12 @@ const filter = ref<string>("");
 const selectedTicker = ref<any>(null);
 const tickers = computed(() => store.tickers);
 
-const graph = ref<number[]>([]);
+const graph = ref<number[]>([]); //+
 
 const arrayNames = ref<String[]>([]);
 
 const page = ref<number>(1);
-const graphElement = ref<HTMLDivElement>();
-const maxGraphElements = ref<number>(1);
+
 
 const existedTicker = computed(
   () =>
@@ -167,9 +133,11 @@ function add(tickerName?: string) {
   }
 }
 
-
 function handleDelete(tickerToRemove: Ticker) {
   store.remove(tickerToRemove.name);
+  if (tickerToRemove === selectedTicker.value){
+    selectedTicker.value = null;
+  }
 }
 
 function select(ticker: any) {
@@ -178,12 +146,7 @@ function select(ticker: any) {
 
 onMounted(async () => {
   await store.loadAvailableTickers();
-  window.addEventListener("resize", calculateMaxGraphElements);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener("resize", calculateMaxGraphElements);
-});
+}); //+
 
 function addAutocompletedTicker(a: string) {
   if (!tickers.value.find((b) => b.name === a)) {
@@ -195,23 +158,7 @@ const tickersData = localStorage.getItem("cryptonomicon-list");
 
 // так как следующие строки внутри сетап функции, они работают как хук жизненного цикла created
 
-
-/*
-if (tickersData) {
-  tickers.value = JSON.parse(tickersData);
-  tickers.value.forEach((ticker) => {
-    subscribeToTicker(ticker.name, (newPrice?: number) => {
-      if (!newPrice) {
-        ticker.invalid = true;
-      } else {
-        updateTicker(ticker.name, newPrice);
-      }
-    });
-  });
-  setInterval(updateTicker, 5000);
-}
-
-*/
+store.getFromLocalStorage(tickersData);
 
 const windowData = Object.fromEntries(
   new URL(window.location).searchParams.entries()
@@ -236,17 +183,7 @@ const autocomplete = computed(() => {
   }
 });
 
-const normalizedGraph = computed(() => {
-  const maxValue = Math.max(...graph.value);
-  const minValue = Math.min(...graph.value);
-  if (maxValue === minValue) {
-    return graph.value.map(() => 50);
-  }
 
-  return graph.value.map(
-    (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue) // функция возвращает процент текущей цены от максимальной
-  );
-});
 
 const startIndex = computed(() => {
   return (page.value - 1) * 6;
@@ -287,23 +224,29 @@ watch(paginatedTickers, () => {
 
 watch(selectedTicker, () => {
   graph.value = [];
-});
+}); //+
 
-watch(selectedTicker, async () => {
-  // при изменении selectedTicker очисти значение graph
-  graph.value.push(selectedTicker.value.price);
-  while (graph.value.length > maxGraphElements.value) {
-    // пока длина графика больше, чем макс кол-во элементов, убираем 1 элемент
-    graph.value.shift();
-  }
-  // ждем пока все изменения применятся и только тогда меняем кол-во элементов в графике при изменении рефа выбранного тикера
-  await nextTick();
-  calculateMaxGraphElements();
-}, { deep: true });
+watch(
+  selectedTicker,
+  async () => {
+    // при изменении selectedTicker очисти значение graph
+    if (!selectedTicker.value){
+      return;
+    }
+    graph.value.push(selectedTicker.value.price);
+    // ждем пока все изменения применятся и только тогда меняем кол-во элементов в графике при изменении рефа выбранного тикера
+    await nextTick();
+  },
+  { deep: true }
+); //++
 
-watch(tickers, (oldValue, newValue) => {
-  localStorage.setItem("cryptonomicon-list", JSON.stringify(tickers.value));
-});
+watch(
+  tickers,
+  (oldValue, newValue) => {
+    localStorage.setItem("cryptonomicon-list", JSON.stringify(tickers.value));
+  },
+  { deep: true }
+);
 
 function updateTicker(tickerName: string, price: number) {
   tickers.value
@@ -311,22 +254,14 @@ function updateTicker(tickerName: string, price: number) {
     .forEach((t) => {
       if (t === selectedTicker.value) {
         graph.value.push(price);
-        while (graph.value.length > maxGraphElements.value) {
-          // пока длина графика больше, чем макс кол-во элементов, убираем 1 элемент
-          graph.value.shift();
-        }
       }
       t.price = price;
     });
 }
 
-function calculateMaxGraphElements() {
-  if (!graphElement.value) {
-    return;
-  }
-  maxGraphElements.value = graphElement.value.clientWidth / 38;
-}
-
+const tooManyTickersAdded = computed(() => {
+  return tickers.value.length > 5;
+});
 </script>
 
 <style src="./app.css"></style>
