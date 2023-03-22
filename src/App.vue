@@ -1,7 +1,7 @@
 <template>
   <div class="container mx-auto flex flex-col items-center p-4">
     <div class="container">
-      <AddTicker :disabled="tooManyTickersAdded" />
+      <AddTicker />
       <template v-if="tickers.length > 0">
         <hr class="w-full border-t border-gray-600 my-4" />
         <div class="my-2">
@@ -74,7 +74,7 @@
         :selected-ticker="selectedTicker"
         :graph="graph"
         @close="selectedTicker = null"
-        @updateGraph="graph.shift()"
+        @update-graph="graph.shift()"
       />
     </div>
   </div>
@@ -85,14 +85,14 @@ import {
   ref,
   computed,
   onMounted,
-  onBeforeUnmount,
   watch,
-  nextTick,
+  nextTick
 } from "vue";
 import AddTicker from "@/components/AddTicker.vue";
 import { useTickersStore } from "@/store/tickers";
 import type { Ticker } from "@/store/tickers";
 import PriceGraph from "@/components/PriceGraph.vue";
+
 
 const store = useTickersStore();
 
@@ -107,7 +107,6 @@ const graph = ref<number[]>([]); //+
 const arrayNames = ref<String[]>([]);
 
 const page = ref<number>(1);
-
 
 const existedTicker = computed(
   () =>
@@ -135,7 +134,7 @@ function add(tickerName?: string) {
 
 function handleDelete(tickerToRemove: Ticker) {
   store.remove(tickerToRemove.name);
-  if (tickerToRemove === selectedTicker.value){
+  if (tickerToRemove === selectedTicker.value) {
     selectedTicker.value = null;
   }
 }
@@ -184,7 +183,6 @@ const autocomplete = computed(() => {
 });
 
 
-
 const startIndex = computed(() => {
   return (page.value - 1) * 6;
 });
@@ -230,7 +228,7 @@ watch(
   selectedTicker,
   async () => {
     // при изменении selectedTicker очисти значение graph
-    if (!selectedTicker.value){
+    if (!selectedTicker.value) {
       return;
     }
     graph.value.push(selectedTicker.value.price);
@@ -258,10 +256,6 @@ function updateTicker(tickerName: string, price: number) {
       t.price = price;
     });
 }
-
-const tooManyTickersAdded = computed(() => {
-  return tickers.value.length > 5;
-});
 </script>
 
 <style src="./app.css"></style>
