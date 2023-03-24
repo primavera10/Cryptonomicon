@@ -6,7 +6,6 @@ const tickersHandlers = new Map<string, Callback[]>();
 const socket = new WebSocket(
   `wss://streamer.cryptocompare.com/v2?api_key=${API_KEY}`
 );
-const bc = new BroadcastChannel("broadcast-info");
 
 socket.addEventListener("message", (e) => {
   const {
@@ -46,13 +45,6 @@ function sendToWebSocket(message: object) {
     },
     { once: true }
   );
-}
-
-function subscribeToTickerOnWsToBTC(t: string) {
-  sendToWebSocket({
-    action: "SubAdd",
-    subs: [`5~CCCAGG~${t}~BTC`],
-  });
 }
 
 function subscribeToTickersOnWs(t: string) {

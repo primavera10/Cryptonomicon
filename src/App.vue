@@ -81,22 +81,14 @@
 </template>
 
 <script setup lang="ts">
-import {
-  ref,
-  computed,
-  onMounted,
-  watch,
-  nextTick
-} from "vue";
+import { ref, computed, onMounted, watch, nextTick } from "vue";
 import AddTicker from "@/components/AddTicker.vue";
 import { useTickersStore } from "@/store/tickers";
 import type { Ticker } from "@/store/tickers";
 import PriceGraph from "@/components/PriceGraph.vue";
 
-
 const store = useTickersStore();
 
-const ticker = ref("");
 const filter = ref<string>("");
 
 const selectedTicker = ref<any>(null);
@@ -104,16 +96,7 @@ const tickers = computed(() => store.tickers);
 
 const graph = ref<number[]>([]); //+
 
-const arrayNames = ref<String[]>([]);
-
 const page = ref<number>(1);
-
-const existedTicker = computed(
-  () =>
-    !!tickers.value.find(
-      (t) => t.name.toLowerCase() === ticker.value.toLowerCase()
-    )
-);
 
 function formatPrice(p: Ticker["price"]) {
   if (typeof p === "string") {
@@ -123,12 +106,6 @@ function formatPrice(p: Ticker["price"]) {
     return p.toFixed(2);
   } else {
     return p.toPrecision(2);
-  }
-}
-
-function add(tickerName?: string) {
-  if (tickerName) {
-    store.add(tickerName);
   }
 }
 
@@ -145,13 +122,7 @@ function select(ticker: any) {
 
 onMounted(async () => {
   await store.loadAvailableTickers();
-}); //+
-
-function addAutocompletedTicker(a: string) {
-  if (!tickers.value.find((b) => b.name === a)) {
-    add(a);
-  }
-}
+});
 
 const tickersData = localStorage.getItem("cryptonomicon-list");
 
@@ -168,20 +139,6 @@ if (windowData.filter) {
 if (windowData.page) {
   page.value = windowData.page; // грузит данные из урла и достает страницу
 }
-//
-// computed starts here
-
-const autocomplete = computed(() => {
-  if (!ticker.value) {
-    return ["BTC", "DOGE", "ETH", "XDP"];
-  } else {
-    let a = arrayNames.value.filter((name) =>
-      name.toLowerCase().startsWith(ticker.value.toLowerCase())
-    );
-    return a.slice(0, 4);
-  }
-});
-
 
 const startIndex = computed(() => {
   return (page.value - 1) * 6;
@@ -203,8 +160,6 @@ const hasNextPage = computed(() => {
   return filteredTickers.value.length > endIndex.value;
 });
 
-// end
-
 watch([filter, page], ([appliedFilters, newPage], [oldFilters]) => {
   const p = oldFilters !== appliedFilters ? 1 : newPage;
   window.history.pushState(
@@ -222,7 +177,7 @@ watch(paginatedTickers, () => {
 
 watch(selectedTicker, () => {
   graph.value = [];
-}); //+
+});
 
 watch(
   selectedTicker,
@@ -236,26 +191,15 @@ watch(
     await nextTick();
   },
   { deep: true }
-); //++
+);
 
 watch(
   tickers,
-  (oldValue, newValue) => {
-    localStorage.setItem("cryptonomicon-list", JSON.stringify(tickers.value));
+  (newTickers) => {
+    localStorage.setItem("cryptonomicon-list", JSON.stringify(newTickers));
   },
   { deep: true }
 );
-
-function updateTicker(tickerName: string, price: number) {
-  tickers.value
-    .filter((t) => t.name === tickerName)
-    .forEach((t) => {
-      if (t === selectedTicker.value) {
-        graph.value.push(price);
-      }
-      t.price = price;
-    });
-}
 </script>
 
 <style src="./app.css"></style>

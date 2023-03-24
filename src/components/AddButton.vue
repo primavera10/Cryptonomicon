@@ -1,7 +1,7 @@
 <template>
   <button
     type="button"
-    class="my-4 bg-gray-600 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white  hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+    class="my-4 bg-gray-600 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
   >
     <!-- Heroicon name: solid/mail -->
     <svg
@@ -18,13 +18,8 @@
     </svg>
     Добавить
   </button>
-
 </template>
 
-<script setup lang="ts">
-
-
-
-</script>
+<script setup lang="ts"></script>
 
 <style scoped></style>

@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { subscribeToTicker, unsubscribeFromTicker } from "@/api";
 
- export interface Ticker {
+export interface Ticker {
   name: string;
   price: string | number;
   invalid?: boolean;
@@ -37,13 +37,13 @@ export const useTickersStore = defineStore("tickers", {
         price: "-",
         invalid: false,
       };
-      if (currentTicker.name.length === 0){
+      if (currentTicker.name.length === 0) {
         return;
       }
       this.tickers.push(currentTicker);
 
       subscribeToTicker(currentTicker.name, (newPrice?: number) => {
-          this.update(name, newPrice);
+        this.update(name, newPrice);
       });
     },
     tickerExists(name: string): boolean {

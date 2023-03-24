@@ -36,7 +36,6 @@
 <script setup lang="ts">
 import AddButton from "@/components/AddButton.vue";
 import { computed, ref } from "vue";
-import { subscribeToTicker } from "@/api";
 
 import { useTickersStore } from "@/store/tickers";
 
